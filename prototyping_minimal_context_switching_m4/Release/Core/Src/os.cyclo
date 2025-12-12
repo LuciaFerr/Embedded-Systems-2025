@@ -1,0 +1,5 @@
+../Core/Src/os.c:35:13:task_finished	1
+../Core/Src/os.c:43:6:os_init	1
+../Core/Src/os.c:48:6:os_task_init	2
+../Core/Src/os.c:91:6:os_start	2
+../Core/Src/os.c:150:6:SysTick_Handler	3

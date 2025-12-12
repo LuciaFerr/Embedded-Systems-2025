@@ -1,0 +1,5 @@
+../Core/Src/os.c:35:13:task_finished	8	static
+../Core/Src/os.c:43:6:os_init	0	static
+../Core/Src/os.c:48:6:os_task_init	20	static
+../Core/Src/os.c:91:6:os_start	24	static,ignoring_inline_asm
+../Core/Src/os.c:150:6:SysTick_Handler	0	static

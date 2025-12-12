@@ -1,0 +1,8 @@
+../Drivers/CMSIS/Include/core_cm4.h:1814:22:__NVIC_SetPriority	16	static
+../Drivers/CMSIS/Include/core_cm4.h:2022:26:SysTick_Config	16	static
+../Core/Src/os.c:35:13:task_finished	16	static
+../Core/Src/os.c:43:6:os_init	8	static
+../Core/Src/os.c:50:13:prepare_initial_stack	32	static
+../Core/Src/os.c:73:6:os_task_init	32	static
+../Core/Src/os.c:91:6:os_start	32	static,ignoring_inline_asm
+../Core/Src/os.c:229:6:SysTick_Handler	4	static

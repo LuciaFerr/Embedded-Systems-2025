@@ -1,0 +1,18 @@
+# Ignore build output everywhere
+Debug/
+Release/
+
+# Ignore common STM32 build artifacts
+*.o
+*.elf
+*.map
+*.list
+*.su
+*.cyclo
+
+# Ignore generated makefiles
+makefile
+sources.mk
+
+# Ignore build files inside the prototyping project
+prototyping_minimal_context_switching_m4/Debug/

@@ -1,18 +1,23 @@
-# Ignore build output everywhere
-Debug/
-Release/
+# ===== Build outputs (STM32 / Eclipse) =====
+**/Debug/
+**/Release/
 
-# Ignore common STM32 build artifacts
+# Object and binary files
 *.o
+*.a
 *.elf
 *.map
 *.list
 *.su
+*.d
 *.cyclo
 
-# Ignore generated makefiles
-makefile
-sources.mk
+# Eclipse / STM32CubeIDE
+.metadata/
+.settings/
+*.launch
+*.cfg
 
-# Ignore build files inside the prototyping project
-prototyping_minimal_context_switching_m4/Debug/
+# OS / editor junk
+.DS_Store
+Thumbs.db

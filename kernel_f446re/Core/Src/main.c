@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "os.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -48,6 +49,9 @@
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+
+#define STACK_SIZE 128
+static uint32_t task1_stack[STACK_SIZE];
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -61,8 +65,18 @@ static void MX_GPIO_Init(void);
   * @brief  The application entry point.
   * @retval int
   */
+void task1(void)
+{
+    while (1) {
+        __NOP();   /* ponto de breakpoint */
+    }
+}
+
+
 int main(void)
 {
+	SysTick->CTRL = 0;   // desativa SysTick completamente (teste 1)
+
 
   /* USER CODE BEGIN 1 */
 
@@ -71,23 +85,27 @@ int main(void)
   /* MCU Configuration--------------------------------------------------------*/
 
   /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-  HAL_Init();
+//  HAL_Init();  comentar para o teste 1
 
   /* USER CODE BEGIN Init */
 
   /* USER CODE END Init */
 
   /* Configure the system clock */
-  SystemClock_Config();
+ // SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
 
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
-  MX_GPIO_Init();
+  //MX_GPIO_Init();
   /* USER CODE BEGIN 2 */
+  os_init();
+  os_task_init(task1, task1_stack, STACK_SIZE);
 
+  /* 1 ms tick */
+  os_start(SystemCoreClock / 1000);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -105,6 +123,7 @@ int main(void)
   * @brief System Clock Configuration
   * @retval None
   */
+
 void SystemClock_Config(void)
 {
   RCC_OscInitTypeDef RCC_OscInitStruct = {0};

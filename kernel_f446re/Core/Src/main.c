@@ -52,12 +52,14 @@ static void MX_GPIO_Init(void);
 
 #define STACK_SIZE 128
 static uint32_t task1_stack[STACK_SIZE];
+static uint32_t task2_stack[STACK_SIZE];
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+volatile uint32_t task1_alive = 0;
 
 /* USER CODE END 0 */
 
@@ -67,6 +69,26 @@ static uint32_t task1_stack[STACK_SIZE];
   */
 void task1(void)
 {
+	__NOP();
+	 task1_alive = 1;
+    while (1) {
+    	 /* --- CONFIGURAR SYSTICK --- */
+    	       SysTick->LOAD = (SystemCoreClock / 1000) - 1;
+    	       SysTick->VAL  = 0;
+
+    	       SysTick->CTRL =
+    	             SysTick_CTRL_CLKSOURCE_Msk   // clock = core
+    	           | SysTick_CTRL_TICKINT_Msk     // interrupt enable
+    	           | SysTick_CTRL_ENABLE_Msk;     // start SysTick
+
+    	       task1_alive++;
+    	              for (volatile int i = 0; i < 100000; i++);
+        __NOP();   /* ponto de breakpoint */
+    }
+}
+
+void task2(void)
+{
     while (1) {
         __NOP();   /* ponto de breakpoint */
     }
@@ -75,7 +97,7 @@ void task1(void)
 
 int main(void)
 {
-	SysTick->CTRL = 0;   // desativa SysTick completamente (teste 1)
+	//SysTick->CTRL = 0;   // desativa SysTick completamente (teste 1)
 
 
   /* USER CODE BEGIN 1 */
@@ -103,10 +125,19 @@ int main(void)
   /* USER CODE BEGIN 2 */
   os_init();
   os_task_init(task1, task1_stack, STACK_SIZE);
+  os_task_init(task2, task2_stack, STACK_SIZE);
 
   /* 1 ms tick */
   os_start(SystemCoreClock / 1000);
   /* USER CODE END 2 */
+  /*SysTick->LOAD = (SystemCoreClock / 1000) - 1;
+         SysTick->VAL  = 0;
+
+         SysTick->CTRL =
+               SysTick_CTRL_CLKSOURCE_Msk   // clock = core
+             | SysTick_CTRL_TICKINT_Msk     // interrupt enable
+             | SysTick_CTRL_ENABLE_Msk;     // start SysTick
+*/
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */

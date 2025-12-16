@@ -20,7 +20,7 @@ typedef uint32_t os_stack_t;
 void os_init(void);
 void os_systick(void);
 bool os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_size);
-bool os_start(uint32_t systick_ticks);
+void os_start(uint32_t systick_ticks);
 //void PendSV_Handler(void);
 
 

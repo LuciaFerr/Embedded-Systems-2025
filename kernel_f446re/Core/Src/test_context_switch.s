@@ -1,77 +1,89 @@
 .syntax unified
 .cpu cortex-m4
-.fpu softvfp
 .thumb
+
+.extern os_schedule
+.extern os_curr_task
+.extern os_next_task
+.extern os_first_switch
 
 .global PendSV_Handler
 .type PendSV_Handler, %function
+
+
+//PendSV_Handler:
+    /* --- Save context of current task --- */
+//    mov   r3, lr
+
+ //   mrs   r0, psp              /* r0 = PSP */
+  //  stmdb r0!, {r4-r11}        /* save R4–R11 on task stack */
+
+ //   ldr   r1, =os_curr_task
+   // ldr   r1, [r1]
+    //str   r0, [r1]             /* os_curr_task->sp = PSP */
+
+    /* --- Call scheduler (C) --- */
+  //  bl    os_schedule
+
+   // mov   lr, r3
+
+    /* --- Restore context of next task --- */
+   // ldr   r1, =os_next_task
+    //ldr   r1, [r1]
+    //ldr   r0, [r1]             /* r0 = next_task->sp */
+
+    //ldmia r0!, {r4-r11}        /* restore R4–R11 */
+    //msr   psp, r0
+       /* update PSP */
+
+    /* --- Return from exception --- */
+    //bx    lr
+
+
 PendSV_Handler:
-    /* Disable interrupts for atomic operation */
-    cpsid i
+    /* ---------------------------------------
+     * Guardar EXC_RETURN no MSP
+     * --------------------------------------- */
+    push    {lr}
 
-    /*
-    Save current task's registers R4-R11 to its stack
-    */
+    /* obter PSP */
+    mrs     r0, psp
 
-    /* Get current Process Stack Pointer */
-    push {r4-r11}
-    mrs r0, psp
+    /* verificar primeiro switch */
+    ldr     r2, =os_first_switch
+    ldr     r2, [r2]
+    cbnz    r2, skip_save
 
+    /* salvar R4–R11 */
+    stmdb   r0!, {r4-r11}
 
-    /* Make space for R8-R11 and save R4-R7 */
-    //subs r0, #16
-    //stmia r0!, {r4-r7}
+    /* guardar SP na task atual */
+    ldr     r1, =os_curr_task
+    ldr     r1, [r1]
+    str     r0, [r1]
 
-    /* Copy R8-R11 to R4-R7 for saving (M0 compatibility) */
-    //mov r4, r8
-    //mov r5, r9
-    //mov r6, r10
-    //mov r7, r11
+skip_save:
+    /* chamar scheduler */
+    bl      os_schedule
 
-    /* Save R8-R11 (now in R4-R7) to stack */
-    //subs r0, #32
-    //stmia r0!, {r4-r7}
+    /* limpar flag */
+    ldr     r2, =os_first_switch
+    movs    r1, #0
+    str     r1, [r2]
 
-    /* Adjust R0 to point to bottom of saved context */
-    //subs r0, #16
+    /* restaurar SP da próxima task */
+    ldr     r1, =os_next_task
+    ldr     r1, [r1]
+    ldr     r0, [r1]
 
-    /* Save current task's SP to its task control block */
-    ldr r2, =os_curr_task
-    ldr r1, [r2]
-    str r0, [r1]
+    /* restaurar R4–R11 */
+    ldmia   r0!, {r4-r11}
+    msr     psp, r0
 
-    /* Load next task's SP from its task control block */
-    ldr r2, =os_next_task
-    ldr r1, [r2]
-    ldr r0, [r1]
+    /* ---------------------------------------
+     * Restaurar EXC_RETURN
+     * --------------------------------------- */
+    pop     {lr}
 
-    /*
-    Restore next task's registers R4-R11 from its stack
-    */
-
-    /* Restore R4-R7 */
-    //ldmia r0!, {r4-r7}
-
-    /* Copy to R8-R11 */
-    //mov r8, r4
-    //mov r9, r5
-    //mov r10, r6
-    //mov r11, r7
-
-    /* Restore original R4-R7 */
-    //ldmia r0!, {r4-r7}
-
-    /* Update Process Stack Pointer */
-    msr psp, r0
-    pop {r4-r11}
-
-    /* EXC_RETURN value: Thread mode + PSP + No FPU */
-    ldr r0, =0xFFFFFFFD
-
-    /* Re-enable interrupts */
-    cpsie i
-
-    /* Return from exception - triggers hardware context restore */
-    bx r0
-
-//.size PendSV_Handler, .-PendSV_Handler
+    /* exception return */
+    bx      lr

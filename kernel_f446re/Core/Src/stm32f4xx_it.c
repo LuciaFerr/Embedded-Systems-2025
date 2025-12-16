@@ -95,6 +95,7 @@ void HardFault_Handler(void)
   }
 }
 
+
 /**
   * @brief This function handles Memory management fault.
   */
@@ -142,20 +143,31 @@ void UsageFault_Handler(void)
 
 /**
   * @brief This function handles System service call via SWI instruction.
+
   */
-void SVC_Handler(void)
+
+__attribute__((naked,used)) void SVC_Handler(void)
 {
+    __asm volatile (
+        "ldr r0, =0xFFFFFFFD \n"  // EXC_RETURN: Thread mode, PSP
+        "mov lr, r0          \n"
+        "bx  lr              \n"
+    );
+
+}
+
+
+//void SVC_Handler(void)
+//{
   /* USER CODE BEGIN SVCall_IRQn 0 */
-	   __asm volatile (
-	        "ldr r0, =0xFFFFFFFD \n"
-	        "mov lr, r0          \n"
-	        "bx lr               \n"
-	    );
+
   /* USER CODE END SVCall_IRQn 0 */
   /* USER CODE BEGIN SVCall_IRQn 1 */
 
   /* USER CODE END SVCall_IRQn 1 */
-}
+//}
+
+
 
 /**
   * @brief This function handles Debug monitor.
@@ -178,11 +190,12 @@ void PendSV_Handler(void) __attribute__((weak));
 
 /**
   * @brief This function handles System tick timer.
+  *
   */
 void SysTick_Handler(void)
 {
   /* USER CODE BEGIN SysTick_IRQn 0 */
-	 //os_systick();
+	 os_systick();
   /* USER CODE END SysTick_IRQn 0 */
   /* USER CODE BEGIN SysTick_IRQn 1 */
 

@@ -33,6 +33,9 @@ volatile os_task_t *os_curr_task;
 volatile os_task_t *os_next_task;
 
 volatile uint32_t tick_debug;
+volatile uint32_t os_first_switch;
+
+
 
 static void task_finished(void)
 {
@@ -44,6 +47,11 @@ static void task_finished(void)
 
 void os_init(void)
 {
+    /* Disable FPU completely */
+    SCB->CPACR &= ~(0xF << 20);
+    __DSB();
+    __ISB();
+
 	memset(&m_task_table, 0, sizeof(m_task_table));
 }
 
@@ -51,14 +59,14 @@ void os_init(void)
 /* helper to prepare canonical Cortex-M initial stack frame */
 static void prepare_initial_stack(os_stack_t *p_stack, uint32_t stack_size, void (*handler)(void), uint32_t *out_sp)
 {
-    uint32_t *stk = &p_stack[stack_size]; /* one-past-end */
+    uint32_t *stk = &p_stack[stack_size]; /* one-past-end, points to the top of the stack */
 
     /* 8-byte align */
     stk = (uint32_t *)((uint32_t)stk & ~0x7UL);
 
     /* hardware-saved frame: xPSR, PC, LR, R12, R3, R2, R1, R0 */
     *(--stk) = 0x01000000UL;         /* xPSR */
-    *(--stk) = (uint32_t)handler;    /* PC */
+    *(--stk) = (uint32_t)handler;  /* PC */
     *(--stk) = 0xFFFFFFFDUL;         /* LR = EXC_RETURN (use PSP) */
     *(--stk) = 0;                    /* R12 */
     *(--stk) = 0;                    /* R3  */
@@ -70,11 +78,16 @@ static void prepare_initial_stack(os_stack_t *p_stack, uint32_t stack_size, void
     for (int i = 0; i < 8; ++i) *(--stk) = 0;
 
     *out_sp = (uint32_t)stk;
+
+    if (stk < &p_stack[0] || stk > &p_stack[stack_size]) {
+        __BKPT(0);   // breakpoint de emergência
+    }
+
 }
 
 bool os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_size)
 {
-    if (m_task_table.size >= OS_CONFIG_MAX_TASKS-1)
+    if (m_task_table.size >= OS_CONFIG_MAX_TASKS - 1)
         return false;
 
     os_task_t *p_task = &m_task_table.tasks[m_task_table.size];
@@ -90,22 +103,42 @@ bool os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_siz
     return true;
 }
 
-bool os_start(uint32_t systick_ticks)
+void os_start(uint32_t systick_ticks)
 {
-    if (m_task_table.size == 0) return false;
 
-    m_task_table.current_task = 0;
+    m_task_table.current_task = 0; //starts the first task
     os_curr_task = &m_task_table.tasks[0];
+    os_next_task = os_curr_task;
 
+    os_first_switch = 1;
+
+    /* prioridades (MUITO IMPORTANTE) */
+    NVIC_SetPriority(SysTick_IRQn, 0xFE);
+    NVIC_SetPriority(PendSV_IRQn, 0xFF);
+
+
+    /* --- MUDAR PARA PSP --- */
     __set_PSP(os_curr_task->sp);
     __set_CONTROL(0x02);   // Thread mode, PSP
-    __ISB();
+    __ISB(); //Instruction Synchronization Barrier
 
-    __asm volatile ("svc 0");   // <-- ENTRA EM HANDLER MODE
 
-    return true; // nunca chega aqui
+       /* entrar no kernel */
+        //   __asm volatile ("svc 0"); //controlled trick to exit an exception
+
+    SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+
+    while (1);
+
+   // __asm volatile (
+      //  "movs r0, #0\n"
+     //   "ldr r0, =0xFFFFFFFD\n"
+    //    "mov lr, r0\n"
+   //     "bx lr\n"
+  //  );
+
+
 }
-
 
 
 
@@ -216,7 +249,7 @@ void os_systick(void)
 
 	tick_debug++;
 
-    if (m_task_table.size == 0) {
+/*    if (m_task_table.size == 0) {
         return;
     }
 
@@ -229,7 +262,31 @@ void os_systick(void)
 
     os_next_task = &m_task_table.tasks[m_task_table.current_task];
     os_next_task->status = OS_TASK_STATUS_ACTIVE;
-
+*/
     /* request context switch */
     SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
 }
+
+void os_schedule(void)
+{
+	   if (os_first_switch) {
+	        os_next_task = os_curr_task;
+	        return;
+	    }
+
+    /* task atual */
+    os_curr_task = &m_task_table.tasks[m_task_table.current_task];
+    os_curr_task->status = OS_TASK_STATUS_IDLE;
+
+    /* round-robin */
+    m_task_table.current_task++;
+    if (m_task_table.current_task >= m_task_table.size) {
+        m_task_table.current_task = 0;
+    }
+
+    /* próxima task */
+    os_next_task = &m_task_table.tasks[m_task_table.current_task];
+    os_next_task->status = OS_TASK_STATUS_ACTIVE;
+}
+
+

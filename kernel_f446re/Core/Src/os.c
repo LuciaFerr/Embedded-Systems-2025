@@ -32,8 +32,7 @@ static struct {
 volatile os_task_t *os_curr_task;
 volatile os_task_t *os_next_task;
 
-volatile uint32_t tick_debug;
-volatile uint32_t os_first_switch;
+volatile uint32_t tick_debug = 0;
 
 
 
@@ -66,8 +65,10 @@ static void prepare_initial_stack(os_stack_t *p_stack, uint32_t stack_size, void
 
     /* hardware-saved frame: xPSR, PC, LR, R12, R3, R2, R1, R0 */
     *(--stk) = 0x01000000UL;         /* xPSR */
-    *(--stk) = (uint32_t)handler;  /* PC */
-    *(--stk) = 0xFFFFFFFDUL;         /* LR = EXC_RETURN (use PSP) */
+   // *(--stk) = (uint32_t)handler;  // PC
+    *(--stk) = ((uint32_t)handler) | 0x1;
+    //*(--stk) = 0xFFFFFFFDUL;         // LR = EXC_RETURN (use PSP)
+    *(--stk) = 0x00000000UL;
     *(--stk) = 0;                    /* R12 */
     *(--stk) = 0;                    /* R3  */
     *(--stk) = 0;                    /* R2  */
@@ -108,140 +109,35 @@ void os_start(uint32_t systick_ticks)
 
     m_task_table.current_task = 0; //starts the first task
     os_curr_task = &m_task_table.tasks[0];
-    os_next_task = os_curr_task;
+    //os_next_task = os_curr_task;
 
-    os_first_switch = 1;
+  //  os_first_switch = 1;
+
 
     /* prioridades (MUITO IMPORTANTE) */
-    NVIC_SetPriority(SysTick_IRQn, 0xFE);
-    NVIC_SetPriority(PendSV_IRQn, 0xFF);
-
+    NVIC_SetPriority(SysTick_IRQn, 0xE0);
+    NVIC_SetPriority(PendSV_IRQn, 0xF0);
 
     /* --- MUDAR PARA PSP --- */
-    __set_PSP(os_curr_task->sp);
+    __set_PSP(os_curr_task->sp+8*4);
     __set_CONTROL(0x02);   // Thread mode, PSP
     __ISB(); //Instruction Synchronization Barrier
 
+  //  __disable_irq();          //  ISTO É A CHAVE
 
-       /* entrar no kernel */
-        //   __asm volatile ("svc 0"); //controlled trick to exit an exception
+     os_start_systick();       // SysTick começa a contar
+                                // mas NÃO pode gerar IRQ
 
-    SCB->ICSR = SCB_ICSR_PENDSVSET_Msk;
+    // entrar no kernel
+    __asm volatile ("svc 0");
 
     while (1);
-
-   // __asm volatile (
-      //  "movs r0, #0\n"
-     //   "ldr r0, =0xFFFFFFFD\n"
-    //    "mov lr, r0\n"
-   //     "bx lr\n"
-  //  );
 
 
 }
 
 
 
-//bool os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_size)
-//{
-//	if (m_task_table.size >= OS_CONFIG_MAX_TASKS-1)
-//		return false;
-//
-//	/* Initialize the task structure and set SP to the top of the stack
-//	   minus 16 words (64 bytes) to leave space for storing 16 registers: */
-//	os_task_t *p_task = &m_task_table.tasks[m_task_table.size];
-//	p_task->handler = handler;
-//	//p_task->sp = (uint32_t)(p_stack+stack_size-16);
-//	p_task->sp = (uint32_t)&p_stack[stack_size - 16]; // 30/11/2025 - to fix the offset issue
-//	p_task->status = OS_TASK_STATUS_IDLE;
-//
-//	/* Save special registers which will be restored on exc. return:
-//	   - XPSR: Default value (0x01000000)
-//	   - PC: Point to the handler function
-//	   - LR: Point to a function to be called when the handler returns */
-//	p_stack[stack_size-1] = 0x01000000;
-//	p_stack[stack_size-2] = (uint32_t)handler;
-//	p_stack[stack_size-3] = (uint32_t) &task_finished;
-//
-//#ifdef OS_CONFIG_DEBUG
-//	uint32_t base = (m_task_table.size+1)*1000;
-//	p_stack[stack_size-4] = base+12;  /* R12 */
-//	p_stack[stack_size-5] = base+3;   /* R3  */
-//	p_stack[stack_size-6] = base+2;   /* R2  */
-//	p_stack[stack_size-7] = base+1;   /* R1  */
-//	p_stack[stack_size-8] = base+0;   /* R0  */
-//	p_stack[stack_size-9] = base+7;   /* R7  */
-//	p_stack[stack_size-10] = base+6;  /* R6  */
-//	p_stack[stack_size-11] = base+5;  /* R5  */
-//	p_stack[stack_size-12] = base+4;  /* R4  */
-//	p_stack[stack_size-13] = base+11; /* R11 */
-//	p_stack[stack_size-14] = base+10; /* R10 */
-//	p_stack[stack_size-15] = base+9;  /* R9  */
-//	p_stack[stack_size-16] = base+8;  /* R8  */
-//#endif
-//
-//	m_task_table.size++;
-//
-//	return true;
-//}
-//
-//bool os_start(uint32_t systick_ticks)
-//{
-//	NVIC_SetPriority(PendSV_IRQn, 15); /* Lowest possible priority */
-//	NVIC_SetPriority(SysTick_IRQn, 0); /* Highest possible priority */
-//
-////	/* Start the SysTick timer: */
-////	uint32_t ret_val = SysTick_Config(systick_ticks);
-////	if (ret_val != 0)
-////		return false;
-////
-////	/* Start the first task: */
-////	os_curr_task = &m_task_table.tasks[m_task_table.current_task];
-////
-////	__set_PSP(os_curr_task->sp+64); /* Set PSP to the top of task's stack */
-////	__set_CONTROL(0x03); /* Switch to PSP, unprivilleged mode */
-////	__ISB(); /* Exec. ISB after changing CONTORL (recommended) */
-////
-////	os_curr_task->handler();
-//
-//	/* Start the first task: */
-//	os_curr_task = &m_task_table.tasks[m_task_table.current_task];
-//
-//	__set_PSP(os_curr_task->sp + 64); /* Set PSP to the top of task's stack */
-//	__set_CONTROL(0x03);              /* Switch to PSP, unprivileged mode */
-//	__ISB();                          /* Exec. ISB after changing CONTROL (recommended) */
-//
-//	/* Now enable SysTick so interrupts use PSP / correct environment */
-//	uint32_t ret_val = SysTick_Config(systick_ticks);
-//	if (ret_val != 0)
-//	    return false;
-//
-//	/* Jump to the first task handler (now running with PSP) */
-//	os_curr_task->handler();
-//
-//	return true;
-//}
-
-//void SysTick_Handler(void)
-//{
-//
-//   // Add static counter for visible blinking
-//   static uint32_t tick_count = 0;
-//   tick_count++;
-//
-//   // Toggle LED every 500ms (500 ticks at 1ms interval)
-//   if(tick_count >= 500) {
-//   HAL_GPIO_TogglePin(GPIOB, GPIO_PIN_0);  // Toggle blue LED
-//   tick_count = 0;
-//   }
-//  /* USER CODE BEGIN SysTick_IRQn 0 */
-//
-//  /* USER CODE END SysTick_IRQn 0 */
-//  HAL_IncTick();
-//  /* USER CODE BEGIN SysTick_IRQn 1 */
-//
-//  /* USER CODE END SysTick_IRQn 1 */
-//}
 
 
 void os_systick(void)
@@ -249,30 +145,29 @@ void os_systick(void)
 
 	tick_debug++;
 
-/*    if (m_task_table.size == 0) {
-        return;
-    }
-
-    os_curr_task = &m_task_table.tasks[m_task_table.current_task];
-    os_curr_task->status = OS_TASK_STATUS_IDLE;
-
-    m_task_table.current_task++;
-    if (m_task_table.current_task >= m_task_table.size)
-        m_task_table.current_task = 0;
-
-    os_next_task = &m_task_table.tasks[m_task_table.current_task];
-    os_next_task->status = OS_TASK_STATUS_ACTIVE;
-*/
     /* request context switch */
     SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
 }
 
+void os_start_systick(void)
+{
+	    SysTick->LOAD = (SystemCoreClock / 1000) - 1;
+	    SysTick->VAL  = 0;
+	    SysTick->CTRL =
+	          SysTick_CTRL_CLKSOURCE_Msk
+	        | SysTick_CTRL_TICKINT_Msk
+	        | SysTick_CTRL_ENABLE_Msk;
+}
+
+
+
+
 void os_schedule(void)
 {
-	   if (os_first_switch) {
-	        os_next_task = os_curr_task;
-	        return;
-	    }
+	   //if (os_first_switch) {
+	   //     os_next_task = os_curr_task;
+	   //     return;
+	   // }
 
     /* task atual */
     os_curr_task = &m_task_table.tasks[m_task_table.current_task];

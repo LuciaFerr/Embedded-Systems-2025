@@ -85,6 +85,8 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
+	volatile uint32_t msp;
+	__asm volatile ("mrs %0, msp" : "=r"(msp));
 
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
@@ -146,15 +148,24 @@ void UsageFault_Handler(void)
 
   */
 
-__attribute__((naked,used)) void SVC_Handler(void)
+__attribute__((naked, used)) void SVC_Handler(void)
 {
     __asm volatile (
-        "ldr r0, =0xFFFFFFFD \n"  // EXC_RETURN: Thread mode, PSP
-        "mov lr, r0          \n"
-        "bx  lr              \n"
-    );
+        "mrs r0, psp        \n"
+        "adds r0, r0, #32   \n"  // 8 regs * 4 bytes = 32
+        "msr psp, r0        \n"
 
+    		// pendurar PendSV
+       // "ldr r0, =0xE000ED04      \n" // SCB->ICSR
+       // "ldr r1, =0x10000000      \n" // PENDSVSET
+       // "str r1, [r0]             \n"
+
+        "ldr lr, =0xFFFFFFFD\n"
+        "bx  lr             \n"
+    );
 }
+
+
 
 
 //void SVC_Handler(void)
@@ -175,6 +186,7 @@ __attribute__((naked,used)) void SVC_Handler(void)
 void DebugMon_Handler(void)
 {
   /* USER CODE BEGIN DebugMonitor_IRQn 0 */
+
 
   /* USER CODE END DebugMonitor_IRQn 0 */
   /* USER CODE BEGIN DebugMonitor_IRQn 1 */

@@ -53,13 +53,18 @@ static void MX_GPIO_Init(void);
 #define STACK_SIZE 128
 static uint32_t task1_stack[STACK_SIZE];
 static uint32_t task2_stack[STACK_SIZE];
+static uint32_t task3_stack[STACK_SIZE];
+static uint32_t task4_stack[STACK_SIZE];
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-volatile uint32_t task1_alive = 0;
+volatile uint32_t trace1 = 0;
+volatile uint32_t trace2 = 0;
+volatile uint32_t trace3 = 0;
+volatile uint32_t trace4 = 0;
 
 /* USER CODE END 0 */
 
@@ -67,30 +72,59 @@ volatile uint32_t task1_alive = 0;
   * @brief  The application entry point.
   * @retval int
   */
+
+
+
 void task1(void)
 {
-	__NOP();
-	 task1_alive = 1;
-    while (1) {
-    	 /* --- CONFIGURAR SYSTICK --- */
-    	       SysTick->LOAD = (SystemCoreClock / 1000) - 1;
-    	       SysTick->VAL  = 0;
+    // GPIO init (uma vez)
+    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+    (void)RCC->AHB1ENR;
 
-    	       SysTick->CTRL =
-    	             SysTick_CTRL_CLKSOURCE_Msk   // clock = core
-    	           | SysTick_CTRL_TICKINT_Msk     // interrupt enable
-    	           | SysTick_CTRL_ENABLE_Msk;     // start SysTick
+    GPIOA->MODER &= ~(3U << (5 * 2));
+    GPIOA->MODER |=  (1U << (5 * 2));
 
-    	       task1_alive++;
-    	              for (volatile int i = 0; i < 100000; i++);
-        __NOP();   /* ponto de breakpoint */
+    //os_start_systick();   // só a primeira task deve chamar isto
+
+    while (1)
+    {
+    	GPIOA->BSRR = (1U << (5 + 16)); //LED OFF
+        trace1++;
     }
 }
 
+
 void task2(void)
 {
-    while (1) {
-        __NOP();   /* ponto de breakpoint */
+    while (1)
+    {
+        GPIOA->BSRR = (1U << (5 + 16)); // LED OFF
+        //GPIOA->BSRR = (1U << 5); //LED ON
+        trace2++;
+
+    }
+}
+
+void task3(void)
+{
+    while (1)
+    {
+       // GPIOA->BSRR = (1U << (5 + 16)); // LED OFF
+        GPIOA->BSRR = (1U << 5); //LED ON
+    	trace3++;
+
+    }
+}
+
+
+
+void task4(void)
+{
+    while (1)
+    {
+        GPIOA->BSRR = (1U << (5 + 16)); // LED OFF
+    	trace4++;
+
     }
 }
 
@@ -100,55 +134,56 @@ int main(void)
 	//SysTick->CTRL = 0;   // desativa SysTick completamente (teste 1)
 
 
-  /* USER CODE BEGIN 1 */
 
-  /* USER CODE END 1 */
+  // USER CODE BEGIN 1
+	// Enable GPIOA clock
+//	    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
 
-  /* MCU Configuration--------------------------------------------------------*/
+	// PA5 as output
+	//    GPIOA->MODER &= ~(3U << (5 * 2));
+	//   GPIOA->MODER |=  (1U << (5 * 2));
+  // USER CODE END 1
 
-  /* Reset of all peripherals, Initializes the Flash interface and the Systick. */
-//  HAL_Init();  comentar para o teste 1
+  // MCU Configuration--------------------------------------------------------
 
-  /* USER CODE BEGIN Init */
+  // Reset of all peripherals, Initializes the Flash interface and the Systick.
+ // HAL_Init();
 
-  /* USER CODE END Init */
+  // USER CODE BEGIN Init
 
-  /* Configure the system clock */
+  // USER CODE END Init
+
+  // Configure the system clock
  // SystemClock_Config();
 
-  /* USER CODE BEGIN SysInit */
 
-  /* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
   //MX_GPIO_Init();
-  /* USER CODE BEGIN 2 */
+
   os_init();
   os_task_init(task1, task1_stack, STACK_SIZE);
   os_task_init(task2, task2_stack, STACK_SIZE);
+  os_task_init(task3, task3_stack, STACK_SIZE);
+  os_task_init(task4, task4_stack, STACK_SIZE);
 
-  /* 1 ms tick */
+  // 1 ms tick
   os_start(SystemCoreClock / 1000);
-  /* USER CODE END 2 */
-  /*SysTick->LOAD = (SystemCoreClock / 1000) - 1;
-         SysTick->VAL  = 0;
 
-         SysTick->CTRL =
-               SysTick_CTRL_CLKSOURCE_Msk   // clock = core
-             | SysTick_CTRL_TICKINT_Msk     // interrupt enable
-             | SysTick_CTRL_ENABLE_Msk;     // start SysTick
-*/
 
-  /* Infinite loop */
-  /* USER CODE BEGIN WHILE */
+
+
+
   while (1)
   {
-    /* USER CODE END WHILE */
 
-    /* USER CODE BEGIN 3 */
+
+
   }
-  /* USER CODE END 3 */
+
 }
+
+
+
 
 /**
   * @brief System Clock Configuration

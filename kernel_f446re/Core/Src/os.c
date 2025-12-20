@@ -108,6 +108,7 @@ void os_start(uint32_t systick_ticks)
 {
 
     m_task_table.current_task = 0; //starts the first task
+    m_task_table.size = 0;
     os_curr_task = &m_task_table.tasks[0];
     //os_next_task = os_curr_task;
 
@@ -161,27 +162,34 @@ void os_start_systick(void)
 
 
 
-
+/*
 void os_schedule(void)
 {
-	   //if (os_first_switch) {
-	   //     os_next_task = os_curr_task;
-	   //     return;
-	   // }
 
-    /* task atual */
+    // task atual
     os_curr_task = &m_task_table.tasks[m_task_table.current_task];
     os_curr_task->status = OS_TASK_STATUS_IDLE;
 
-    /* round-robin */
+    // round-robin
     m_task_table.current_task++;
     if (m_task_table.current_task >= m_task_table.size) {
         m_task_table.current_task = 0;
     }
 
-    /* próxima task */
+    // próxima task
     os_next_task = &m_task_table.tasks[m_task_table.current_task];
     os_next_task->status = OS_TASK_STATUS_ACTIVE;
 }
+*/
+void os_schedule(void)
+{
+    static int idx = 0;
+
+    idx = (idx + 1) % 4;
+
+    os_next_task =  &m_task_table.tasks[idx];
+    os_curr_task = os_next_task;
+}
+
 
 

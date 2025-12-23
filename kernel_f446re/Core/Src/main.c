@@ -141,23 +141,6 @@ void task4(void)
     }
 }
 
-void task_low(void)
-{
-    while (1)
-    {
-        trace_low++;
-    }
-}
-
-void task_high(void)
-{
-    while (1)
-    {
-        trace_high++;
-        os_delay(100);
-    }
-}
-
 
 
 int main(void)
@@ -192,8 +175,8 @@ int main(void)
   //MX_GPIO_Init();
 
   os_init();
-  os_task_init(task_low, task1_stack, STACK_SIZE, 2);
-  os_task_init(task_high, task2_stack, STACK_SIZE, 0);
+  os_task_init(task1, task1_stack, STACK_SIZE, 0);
+  os_task_init(task2, task2_stack, STACK_SIZE, 2);
  // os_task_init(task3, task3_stack, STACK_SIZE);
  // os_task_init(task4, task4_stack, STACK_SIZE);
 

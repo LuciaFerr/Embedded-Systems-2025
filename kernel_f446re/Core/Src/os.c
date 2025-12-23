@@ -13,6 +13,8 @@ typedef enum {
 	OS_TASK_STATUS_DELAYED
 } os_task_status_t;
 
+typedef uint8_t task_prio_t; // 0 = higher priority
+
 typedef struct {
 	/* The stack pointer (sp) has to be the first element as it is located
 	   at the same address as the structure itself (which makes it possible
@@ -22,6 +24,7 @@ typedef struct {
 	void (*handler)(void);
 	volatile os_task_status_t status;
 	volatile uint32_t delay_ticks;
+	volatile task_prio_t priority;
 } os_task_t;
 
 static struct {
@@ -87,7 +90,7 @@ static void prepare_initial_stack(os_stack_t *p_stack, uint32_t stack_size, void
 
 }
 
-bool os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_size)
+bool os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_size, task_prio_t prio)
 {
     if (m_task_table.size >= OS_CONFIG_MAX_TASKS - 1)
         return false;
@@ -96,6 +99,7 @@ bool os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_siz
     p_task->handler = handler;
     p_task->status = OS_TASK_STATUS_READY;
     p_task->delay_ticks = 0;
+    p_task->priority = prio;
 
     uint32_t initial_sp;
     prepare_initial_stack(p_stack, stack_size, handler, &initial_sp);
@@ -174,23 +178,7 @@ void os_start_systick(void)
 	        | SysTick_CTRL_ENABLE_Msk;
 }
 
-
-
 /*
-void os_schedule(void)
-{
-
-    // round-robin
-    m_task_table.current_task++;
-    if (m_task_table.current_task >= m_task_table.size) {
-        m_task_table.current_task = 0;
-    }
-
-    // próxima task
-    os_next_task = &m_task_table.tasks[m_task_table.current_task];
-    os_curr_task = os_next_task;
-   // os_next_task->status = OS_TASK_STATUS_ACTIVE;
-}*/
 
 void os_schedule(void)
 {
@@ -211,6 +199,29 @@ void os_schedule(void)
 
     // se ninguém estiver READY, continua na mesma
     os_next_task = os_curr_task;
+}
+*/
+
+void os_schedule(void)
+{
+    os_task_t *best = NULL;
+
+    for (int i = 0; i < m_task_table.size; i++)
+    {
+        os_task_t *t = &m_task_table.tasks[i];
+
+        if (t->status != OS_TASK_STATUS_READY)
+            continue;
+
+        if (!best || t->priority < best->priority)
+            best = t;
+    }
+
+    if (best){
+        os_next_task = best;
+    	os_curr_task = os_next_task;
+    }else
+        os_next_task = os_curr_task; // fallback
 }
 
 

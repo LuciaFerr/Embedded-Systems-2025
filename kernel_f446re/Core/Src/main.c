@@ -74,7 +74,7 @@ volatile uint32_t trace4 = 0;
   */
 
 
-
+/*
 void task1(void)
 {
     // GPIO init (uma vez)
@@ -84,12 +84,24 @@ void task1(void)
     GPIOA->MODER &= ~(3U << (5 * 2));
     GPIOA->MODER |=  (1U << (5 * 2));
 
-    //os_start_systick();   // só a primeira task deve chamar isto
 
     while (1)
     {
     	GPIOA->BSRR = (1U << (5 + 16)); //LED OFF
         trace1++;
+    }
+}
+*/
+
+void task1(void)
+{
+    while (1)
+    {
+    	trace1++;
+        GPIOA->BSRR = (1 << 5);      // LED ON
+        os_delay(500);
+        GPIOA->BSRR = (1 << 21);     // LED OFF
+        os_delay(500);
     }
 }
 
@@ -98,7 +110,7 @@ void task2(void)
 {
     while (1)
     {
-        GPIOA->BSRR = (1U << (5 + 16)); // LED OFF
+        //GPIOA->BSRR = (1U << (5 + 16)); // LED OFF
         //GPIOA->BSRR = (1U << 5); //LED ON
         trace2++;
 
@@ -163,8 +175,16 @@ int main(void)
   os_init();
   os_task_init(task1, task1_stack, STACK_SIZE);
   os_task_init(task2, task2_stack, STACK_SIZE);
-  os_task_init(task3, task3_stack, STACK_SIZE);
-  os_task_init(task4, task4_stack, STACK_SIZE);
+ // os_task_init(task3, task3_stack, STACK_SIZE);
+ // os_task_init(task4, task4_stack, STACK_SIZE);
+
+
+  // GPIO init (uma vez)
+  RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+  (void)RCC->AHB1ENR;
+
+  GPIOA->MODER &= ~(3U << (5 * 2));
+  GPIOA->MODER |=  (1U << (5 * 2));
 
   // 1 ms tick
   os_start(SystemCoreClock / 1000);

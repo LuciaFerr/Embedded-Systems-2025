@@ -206,12 +206,9 @@ void PendSV_Handler(void) __attribute__((weak));
   */
 void SysTick_Handler(void)
 {
-  /* USER CODE BEGIN SysTick_IRQn 0 */
-	 os_systick();
-  /* USER CODE END SysTick_IRQn 0 */
-  /* USER CODE BEGIN SysTick_IRQn 1 */
 
-  /* USER CODE END SysTick_IRQn 1 */
+	 os_systick();
+
 }
 
 

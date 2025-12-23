@@ -21,5 +21,7 @@ void os_init(void);
 void os_systick(void);
 bool os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_size);
 void os_start(uint32_t systick_ticks);
+void os_delay(uint32_t ticks);
+
 
 #endif /* INC_OS_H_ */

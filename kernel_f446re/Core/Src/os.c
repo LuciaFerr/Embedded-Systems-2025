@@ -9,8 +9,8 @@
 #include "os.h"
 
 typedef enum {
-	OS_TASK_STATUS_IDLE = 1,
-	OS_TASK_STATUS_ACTIVE
+	OS_TASK_STATUS_READY = 1,
+	OS_TASK_STATUS_DELAYED
 } os_task_status_t;
 
 typedef struct {
@@ -21,6 +21,7 @@ typedef struct {
 	volatile uint32_t sp;
 	void (*handler)(void);
 	volatile os_task_status_t status;
+	volatile uint32_t delay_ticks;
 } os_task_t;
 
 static struct {
@@ -93,7 +94,8 @@ bool os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_siz
 
     os_task_t *p_task = &m_task_table.tasks[m_task_table.size];
     p_task->handler = handler;
-    p_task->status = OS_TASK_STATUS_IDLE;
+    p_task->status = OS_TASK_STATUS_READY;
+    p_task->delay_ticks = 0;
 
     uint32_t initial_sp;
     prepare_initial_stack(p_stack, stack_size, handler, &initial_sp);
@@ -145,6 +147,19 @@ void os_systick(void)
 
 	tick_debug++;
 
+	  for (int i = 0; i < m_task_table.size; i++)
+	    {
+	        os_task_t *t = &m_task_table.tasks[i];
+
+	        if (t->status == OS_TASK_STATUS_DELAYED)
+	        {
+	            if (--t->delay_ticks == 0)
+	            {
+	                t->status = OS_TASK_STATUS_READY;
+	            }
+	        }
+	    }
+
     /* request context switch */
     SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
 }
@@ -161,7 +176,7 @@ void os_start_systick(void)
 
 
 
-
+/*
 void os_schedule(void)
 {
 
@@ -175,6 +190,42 @@ void os_schedule(void)
     os_next_task = &m_task_table.tasks[m_task_table.current_task];
     os_curr_task = os_next_task;
    // os_next_task->status = OS_TASK_STATUS_ACTIVE;
+}*/
+
+void os_schedule(void)
+{
+    int start = m_task_table.current_task;
+
+    for (int i = 1; i <= m_task_table.size; i++)
+    {
+        int idx = (start + i) % m_task_table.size;
+
+        if (m_task_table.tasks[idx].status == OS_TASK_STATUS_READY)
+        {
+            m_task_table.current_task = idx;
+            os_next_task = &m_task_table.tasks[idx];
+            os_curr_task = os_next_task;
+            return;
+        }
+    }
+
+    // se ninguém estiver READY, continua na mesma
+    os_next_task = os_curr_task;
 }
+
+
+void os_delay(uint32_t ticks)
+{
+    __disable_irq();
+
+    os_curr_task->delay_ticks = ticks;
+    os_curr_task->status = OS_TASK_STATUS_DELAYED;
+
+    __enable_irq();
+
+    // forces context switch
+    SCB->ICSR |= SCB_ICSR_PENDSVSET_Msk;
+}
+
 
 

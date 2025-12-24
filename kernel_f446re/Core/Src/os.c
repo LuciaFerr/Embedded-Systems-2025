@@ -38,6 +38,9 @@ volatile os_task_t *os_next_task;
 
 volatile uint32_t tick_debug = 0;
 
+#define MAX_PRIORITY 256
+static int last_rr_index[MAX_PRIORITY];
+
 
 
 static void task_finished(void)
@@ -56,6 +59,10 @@ void os_init(void)
     __ISB();
 
 	memset(&m_task_table, 0, sizeof(m_task_table));
+
+	for (int i = 0; i < MAX_PRIORITY; i++)
+	    last_rr_index[i] = -1;
+
 }
 
 
@@ -129,10 +136,8 @@ void os_start(uint32_t systick_ticks)
     __set_CONTROL(0x02);   // Thread mode, PSP
     __ISB(); //Instruction Synchronization Barrier
 
-  //  __disable_irq();          //  ISTO É A CHAVE
 
-     os_start_systick();       // SysTick começa a contar
-                                // mas NÃO pode gerar IRQ
+     os_start_systick();
 
     // entrar no kernel
     __asm volatile ("svc 0");
@@ -178,9 +183,9 @@ void os_start_systick(void)
 	        | SysTick_CTRL_ENABLE_Msk;
 }
 
-/*
 
-void os_schedule(void)
+/*
+void os_schedule(void) //round-robin no priority
 {
     int start = m_task_table.current_task;
 
@@ -200,9 +205,12 @@ void os_schedule(void)
     // se ninguém estiver READY, continua na mesma
     os_next_task = os_curr_task;
 }
-*/
+/*
 
-void os_schedule(void)
+
+
+/*
+void os_schedule(void) //PRIORITY WITHOUT FAIRNESS
 {
     os_task_t *best = NULL;
 
@@ -223,7 +231,47 @@ void os_schedule(void)
     }else
         os_next_task = os_curr_task; // fallback
 }
+*/
 
+
+
+
+ void os_schedule(void) //PRIORITY WITH FAIRNESS
+{
+    os_task_t *best = NULL;
+    int best_idx = -1;
+
+    for (task_prio_t prio = 0; prio < MAX_PRIORITY; prio++)
+    {
+        int start = last_rr_index[prio];
+
+        for (int offset = 1; offset <= m_task_table.size; offset++)
+        {
+            int idx = (start + offset) % m_task_table.size;
+            os_task_t *t = &m_task_table.tasks[idx];
+
+            if (t->priority != prio)
+                continue;
+
+            if (t->status != OS_TASK_STATUS_READY)
+                continue;
+
+            best = t;
+            best_idx = idx;
+            break;
+        }
+
+        if (best)
+        {
+            last_rr_index[prio] = best_idx;
+            os_next_task = best;
+            os_curr_task = best;
+            return;
+        }
+    }
+
+    os_next_task = os_curr_task;
+}
 
 void os_delay(uint32_t ticks)
 {

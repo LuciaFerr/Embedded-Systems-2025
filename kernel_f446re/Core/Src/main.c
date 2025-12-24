@@ -46,6 +46,8 @@
 
 /* USER CODE END PV */
 
+#define IDLE_PRIORITY  255
+
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
@@ -53,6 +55,7 @@ static void MX_GPIO_Init(void);
 #define STACK_SIZE 128
 static uint32_t task1_stack[STACK_SIZE];
 static uint32_t task2_stack[STACK_SIZE];
+static uint32_t idle_task_stack[STACK_SIZE];
 static uint32_t task3_stack[STACK_SIZE];
 static uint32_t task4_stack[STACK_SIZE];
 /* USER CODE BEGIN PFP */
@@ -67,6 +70,8 @@ volatile uint32_t trace3 = 0;
 volatile uint32_t trace4 = 0;
 volatile uint32_t trace_low = 0;
 volatile uint32_t trace_high = 0;
+volatile uint32_t trace_idle = 0;
+
 /* USER CODE END 0 */
 
 /**
@@ -100,9 +105,9 @@ void task1(void)
     {
     	trace1++;
         GPIOA->BSRR = (1 << 5);      // LED ON
-        os_delay(500);
+        os_delay(1000);
         GPIOA->BSRR = (1 << 21);     // LED OFF
-        os_delay(500);
+        os_delay(1000);
     }
 }
 
@@ -114,6 +119,7 @@ void task2(void)
         //GPIOA->BSRR = (1U << (5 + 16)); // LED OFF
         //GPIOA->BSRR = (1U << 5); //LED ON
         trace2++;
+      //  os_delay(2000);
 
     }
 }
@@ -123,7 +129,7 @@ void task3(void)
     while (1)
     {
        // GPIOA->BSRR = (1U << (5 + 16)); // LED OFF
-        GPIOA->BSRR = (1U << 5); //LED ON
+       // GPIOA->BSRR = (1U << 5); //LED ON
     	trace3++;
 
     }
@@ -135,12 +141,20 @@ void task4(void)
 {
     while (1)
     {
-        GPIOA->BSRR = (1U << (5 + 16)); // LED OFF
+       // GPIOA->BSRR = (1U << (5 + 16)); // LED OFF
     	trace4++;
 
     }
 }
 
+void idle_task(void)
+{
+    while (1)
+    {
+        __WFI();   // Wait For Interrupt
+        trace_idle++;
+    }
+}
 
 
 int main(void)
@@ -175,10 +189,11 @@ int main(void)
   //MX_GPIO_Init();
 
   os_init();
-  os_task_init(task1, task1_stack, STACK_SIZE, 0);
+  //os_task_init(task1, task1_stack, STACK_SIZE, 0);
   os_task_init(task2, task2_stack, STACK_SIZE, 2);
- // os_task_init(task3, task3_stack, STACK_SIZE);
- // os_task_init(task4, task4_stack, STACK_SIZE);
+  os_task_init(idle_task, idle_task_stack, STACK_SIZE, IDLE_PRIORITY);
+  os_task_init(task3, task3_stack, STACK_SIZE,2);
+  os_task_init(task4, task4_stack, STACK_SIZE, 2);
 
 
   // GPIO init (uma vez)

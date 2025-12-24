@@ -191,10 +191,10 @@ int main(void)
   os_init();
   //os_task_init(task1, task1_stack, STACK_SIZE, 0);
   os_task_init(task2, task2_stack, STACK_SIZE, 2);
-  os_task_init(idle_task, idle_task_stack, STACK_SIZE, IDLE_PRIORITY);
   os_task_init(task3, task3_stack, STACK_SIZE,2);
   os_task_init(task4, task4_stack, STACK_SIZE, 2);
 
+  os_task_init(idle_task, idle_task_stack, STACK_SIZE, IDLE_PRIORITY);
 
   // GPIO init (uma vez)
   RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;

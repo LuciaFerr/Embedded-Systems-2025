@@ -19,32 +19,8 @@
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "os.h"
+#include "uart.h"
 
-/* Private includes ----------------------------------------------------------*/
-/* USER CODE BEGIN Includes */
-
-/* USER CODE END Includes */
-
-/* Private typedef -----------------------------------------------------------*/
-/* USER CODE BEGIN PTD */
-
-/* USER CODE END PTD */
-
-/* Private define ------------------------------------------------------------*/
-/* USER CODE BEGIN PD */
-
-/* USER CODE END PD */
-
-/* Private macro -------------------------------------------------------------*/
-/* USER CODE BEGIN PM */
-
-/* USER CODE END PM */
-
-/* Private variables ---------------------------------------------------------*/
-
-/* USER CODE BEGIN PV */
-
-/* USER CODE END PV */
 
 #define IDLE_PRIORITY  255
 
@@ -72,12 +48,6 @@ volatile uint32_t trace_low = 0;
 volatile uint32_t trace_high = 0;
 volatile uint32_t trace_idle = 0;
 
-/* USER CODE END 0 */
-
-/**
-  * @brief  The application entry point.
-  * @retval int
-  */
 
 
 /*
@@ -98,7 +68,7 @@ void task1(void)
     }
 }
 */
-
+/*
 void task1(void)
 {
     while (1)
@@ -118,7 +88,7 @@ void task2(void)
     {
         //GPIOA->BSRR = (1U << (5 + 16)); // LED OFF
         //GPIOA->BSRR = (1U << 5); //LED ON
-        trace2++;
+        trace2 = os_get_psp();
       //  os_delay(2000);
 
     }
@@ -135,8 +105,6 @@ void task3(void)
     }
 }
 
-
-
 void task4(void)
 {
     while (1)
@@ -147,6 +115,7 @@ void task4(void)
     }
 }
 
+*/
 void idle_task(void)
 {
     while (1)
@@ -157,43 +126,65 @@ void idle_task(void)
 }
 
 
+/////////////TEST TASKS INDIVUIDUAL STACK//////////////////////////
+void task1(void)
+{
+    while (1)
+    {
+        uint32_t psp = os_get_psp();
+        uart_print_psp("Task 1", psp);
+        os_delay(500);
+    }
+}
+
+
+
+void task2(void)
+{
+    while (1)
+    {
+        uint32_t psp = os_get_psp();
+        uart_print_psp("Task 2", psp);
+        os_delay(500);
+    }
+}
+
+
+void task3(void)
+{
+    while (1)
+    {
+        uint32_t psp = os_get_psp();
+        uart_print_psp("Task 3", psp);
+        os_delay(500);
+    }
+}
+
+void task4(void)
+{
+    while (1)
+    {
+        uint32_t psp = os_get_psp();
+        uart_print_psp("Task 4", psp);
+        os_delay(500);
+    }
+}
+////////////////////////////////////////////
+
+
 int main(void)
 {
-	//SysTick->CTRL = 0;   // desativa SysTick completamente (teste 1)
 
+  uart_init();
 
-
-  // USER CODE BEGIN 1
-	// Enable GPIOA clock
-//	    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
-
-	// PA5 as output
-	//    GPIOA->MODER &= ~(3U << (5 * 2));
-	//   GPIOA->MODER |=  (1U << (5 * 2));
-  // USER CODE END 1
-
-  // MCU Configuration--------------------------------------------------------
-
-  // Reset of all peripherals, Initializes the Flash interface and the Systick.
- // HAL_Init();
-
-  // USER CODE BEGIN Init
-
-  // USER CODE END Init
-
-  // Configure the system clock
- // SystemClock_Config();
-
-
-
-  //MX_GPIO_Init();
+  uart_print("UART initialized\r\n");
 
   os_init();
-  //os_task_init(task1, task1_stack, STACK_SIZE, 0);
-  os_task_init(task2, task2_stack, STACK_SIZE, 2);
-  os_task_init(idle_task, idle_task_stack, STACK_SIZE, IDLE_PRIORITY);
-  os_task_init(task3, task3_stack, STACK_SIZE,2);
+  os_task_init(task1, task1_stack, STACK_SIZE, 2);
+  os_task_init(task2, task2_stack, STACK_SIZE, 1);
+  os_task_init(task3, task3_stack, STACK_SIZE, 0);
   os_task_init(task4, task4_stack, STACK_SIZE, 2);
+  os_task_init(idle_task, idle_task_stack, STACK_SIZE, IDLE_PRIORITY);
 
 
   // GPIO init (uma vez)
@@ -218,7 +209,6 @@ int main(void)
   }
 
 }
-
 
 
 

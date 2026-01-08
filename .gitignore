@@ -15,8 +15,10 @@
 # Eclipse / STM32CubeIDE
 .metadata/
 .settings/
+.cproject
 *.launch
 *.cfg
+
 
 # OS / editor junk
 .DS_Store

@@ -287,4 +287,34 @@ void os_delay(uint32_t ticks)
 }
 
 
+uint32_t os_get_psp(void)
+{
+    uint32_t psp;
+    __asm volatile ("mrs %0, psp" : "=r"(psp));
+    return psp;
+}
+
+static uint32_t primask_backup;
+
+void os_enter_critical(void)
+{
+    __asm volatile (
+        "mrs %0, primask \n"
+        "cpsid i         \n"
+        : "=r"(primask_backup)
+        :
+        : "memory"
+    );
+}
+
+void os_exit_critical(void)
+{
+    __asm volatile (
+        "msr primask, %0 \n"
+        :
+        : "r"(primask_backup)
+        : "memory"
+    );
+}
+
 

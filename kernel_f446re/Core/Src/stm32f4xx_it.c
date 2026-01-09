@@ -155,11 +155,6 @@ __attribute__((naked, used)) void SVC_Handler(void)
         "adds r0, r0, #32   \n"  // 8 regs * 4 bytes = 32
         "msr psp, r0        \n"
 
-    		// pendurar PendSV
-       // "ldr r0, =0xE000ED04      \n" // SCB->ICSR
-       // "ldr r1, =0x10000000      \n" // PENDSVSET
-       // "str r1, [r0]             \n"
-
         "ldr lr, =0xFFFFFFFD\n"
         "bx  lr             \n"
     );

@@ -17,10 +17,16 @@
 
 typedef uint32_t os_stack_t;
 typedef uint8_t task_prio_t;
+typedef struct os_task os_task_t;
 
-void os_init(void);
+extern os_task_t *idle_task_ptr;
+extern volatile uint32_t tick_debug;
+
+
+
+os_task_t *os_task_init(void (*handler)(void),os_stack_t *p_stack,uint32_t stack_size,task_prio_t prio);
 void os_systick(void);
-bool os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_size, task_prio_t prio );
+//bool os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_size, task_prio_t prio );
 void os_start(uint32_t systick_ticks);
 void os_delay(uint32_t ticks);
 uint32_t os_get_psp(void);

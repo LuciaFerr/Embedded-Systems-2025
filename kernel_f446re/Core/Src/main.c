@@ -22,7 +22,7 @@
 #include "uart.h"
 
 
-#define IDLE_PRIORITY  255
+#define IDLE_PRIORITY  10
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
@@ -31,91 +31,31 @@ static void MX_GPIO_Init(void);
 #define STACK_SIZE 128
 static uint32_t task1_stack[STACK_SIZE];
 static uint32_t task2_stack[STACK_SIZE];
-static uint32_t idle_task_stack[STACK_SIZE];
 static uint32_t task3_stack[STACK_SIZE];
 static uint32_t task4_stack[STACK_SIZE];
-/* USER CODE BEGIN PFP */
+static uint32_t task5_stack[STACK_SIZE];
+static uint32_t idle_task_stack[STACK_SIZE];
 
-/* USER CODE END PFP */
-
-/* Private user code ---------------------------------------------------------*/
-/* USER CODE BEGIN 0 */
 volatile uint32_t trace1 = 0;
 volatile uint32_t trace2 = 0;
 volatile uint32_t trace3 = 0;
 volatile uint32_t trace4 = 0;
-volatile uint32_t trace_low = 0;
-volatile uint32_t trace_high = 0;
+
 volatile uint32_t trace_idle = 0;
 
+static os_task_t *idle_task_handle;
 
 
-/*
-void task1(void)
-{
-    // GPIO init (uma vez)
-    RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
-    (void)RCC->AHB1ENR;
+#define LED1_ON()   (GPIOA->BSRR = (1 << 5));
+#define LED1_OFF()  (GPIOA->BSRR = (1 << (5 + 16)));   // D13 OFF
 
-    GPIOA->MODER &= ~(3U << (5 * 2));
-    GPIOA->MODER |=  (1U << (5 * 2));
+#define LED2_ON()   (GPIOA->BSRR = (1 << 6)) //D12
+#define LED2_OFF()  (GPIOA->BSRR = (1 << (6 + 16)))
 
-
-    while (1)
-    {
-    	GPIOA->BSRR = (1U << (5 + 16)); //LED OFF
-        trace1++;
-    }
-}
-*/
-/*
-void task1(void)
-{
-    while (1)
-    {
-    	trace1++;
-        GPIOA->BSRR = (1 << 5);      // LED ON
-        os_delay(1000);
-        GPIOA->BSRR = (1 << 21);     // LED OFF
-        os_delay(1000);
-    }
-}
+#define LED3_ON()   (GPIOA->BSRR = (1 << 7)) //D11
+#define LED3_OFF()  (GPIOA->BSRR = (1 << (7 + 16)))
 
 
-void task2(void)
-{
-    while (1)
-    {
-        //GPIOA->BSRR = (1U << (5 + 16)); // LED OFF
-        //GPIOA->BSRR = (1U << 5); //LED ON
-        trace2 = os_get_psp();
-      //  os_delay(2000);
-
-    }
-}
-
-void task3(void)
-{
-    while (1)
-    {
-       // GPIOA->BSRR = (1U << (5 + 16)); // LED OFF
-       // GPIOA->BSRR = (1U << 5); //LED ON
-    	trace3++;
-
-    }
-}
-
-void task4(void)
-{
-    while (1)
-    {
-       // GPIOA->BSRR = (1U << (5 + 16)); // LED OFF
-    	trace4++;
-
-    }
-}
-
-*/
 void idle_task(void)
 {
     while (1)
@@ -125,7 +65,7 @@ void idle_task(void)
     }
 }
 
-
+/*
 /////////////TEST TASKS INDIVUIDUAL STACK//////////////////////////
 void task1(void)
 {
@@ -169,7 +109,73 @@ void task4(void)
         os_delay(500);
     }
 }
+void task5(void)
+{
+    while (1)
+    {
+        uint32_t psp = os_get_psp();
+        uart_print_psp("Task 5", psp);
+        os_delay(500);
+    }
+}
 ////////////////////////////////////////////
+
+*/
+
+////////////// LEDS TEST OUTPUTS D13, D12 //////////////////////
+void task1(void) {
+    while (1) {
+
+        trace1++;
+        if ((tick_debug % 500) < 250){
+            	                  LED1_ON();  //D13
+            	        }else{
+            	                  LED1_OFF();
+            	        }
+
+        os_delay(50);
+    }
+}
+
+void task2(void) {
+    while (1) {
+    		trace2++;
+    	   if ((tick_debug % 500) < 250){
+    	                  LED2_ON();       //D12
+    	        }else{
+    	                  LED2_OFF();
+    	        }
+            //os_delay(200);
+
+    }
+}
+
+/*
+void task3(void) {
+    while (1) {
+    		trace3++;
+    		os_delay(1000);
+    }
+}
+*/
+
+void led_setup(void){
+	  RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
+
+	  // Limpar modo
+	  GPIOA->MODER &= ~(
+	      (3 << (5 * 2)) |
+	      (3 << (6 * 2)) |
+	      (3 << (7 * 2))
+	  );
+
+	  // Output mode (01)
+	  GPIOA->MODER |=
+	      (1 << (5 * 2)) |
+	      (1 << (6 * 2)) |
+	      (1 << (7 * 2));
+}
+///////////////////////////////////
 
 
 int main(void)
@@ -177,28 +183,34 @@ int main(void)
 
   uart_init();
 
-  uart_print("UART initialized\r\n");
+  uart_print("UART initialized\r\n"); //115200, COM3
+  led_setup();
+
 
   os_init();
-  os_task_init(task1, task1_stack, STACK_SIZE, 2);
+
+  //LED TEST TASKS
+
+  os_task_init(task1, task1_stack, STACK_SIZE, 0);
   os_task_init(task2, task2_stack, STACK_SIZE, 1);
-  os_task_init(task3, task3_stack, STACK_SIZE, 0);
-  os_task_init(task4, task4_stack, STACK_SIZE, 2);
-  os_task_init(idle_task, idle_task_stack, STACK_SIZE, IDLE_PRIORITY);
+  //os_task_init(task3, task3_stack, STACK_SIZE, 0);
 
 
-  // GPIO init (uma vez)
-  RCC->AHB1ENR |= RCC_AHB1ENR_GPIOAEN;
-  (void)RCC->AHB1ENR;
+  /*
+  // STACK TEST
+  os_task_init(task1, task1_stack, STACK_SIZE, 0);
+  os_task_init(task2, task2_stack, STACK_SIZE, 1);
+  os_task_init(task3, task3_stack, STACK_SIZE, 2);
+  os_task_init(task4, task4_stack, STACK_SIZE, 3);
+  os_task_init(task5, task5_stack, STACK_SIZE, 3);
 
-  GPIOA->MODER &= ~(3U << (5 * 2));
-  GPIOA->MODER |=  (1U << (5 * 2));
+*/
 
+  idle_task_handle = os_task_init(idle_task, idle_task_stack, STACK_SIZE, IDLE_PRIORITY);
+
+  idle_task_ptr = idle_task_handle;
   // 1 ms tick
   os_start(SystemCoreClock / 1000);
-
-
-
 
 
   while (1)
@@ -211,110 +223,6 @@ int main(void)
 }
 
 
-
-/**
-  * @brief System Clock Configuration
-  * @retval None
-  */
-
-void SystemClock_Config(void)
-{
-  RCC_OscInitTypeDef RCC_OscInitStruct = {0};
-  RCC_ClkInitTypeDef RCC_ClkInitStruct = {0};
-
-  /** Configure the main internal regulator output voltage
-  */
-  __HAL_RCC_PWR_CLK_ENABLE();
-  __HAL_PWR_VOLTAGESCALING_CONFIG(PWR_REGULATOR_VOLTAGE_SCALE3);
-
-  /** Initializes the RCC Oscillators according to the specified parameters
-  * in the RCC_OscInitTypeDef structure.
-  */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
-  RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 16;
-  RCC_OscInitStruct.PLL.PLLN = 336;
-  RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV4;
-  RCC_OscInitStruct.PLL.PLLQ = 2;
-  RCC_OscInitStruct.PLL.PLLR = 2;
-  if (HAL_RCC_OscConfig(&RCC_OscInitStruct) != HAL_OK)
-  {
-    Error_Handler();
-  }
-
-  /** Initializes the CPU, AHB and APB buses clocks
-  */
-  RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK|RCC_CLOCKTYPE_SYSCLK
-                              |RCC_CLOCKTYPE_PCLK1|RCC_CLOCKTYPE_PCLK2;
-  RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
-  RCC_ClkInitStruct.AHBCLKDivider = RCC_SYSCLK_DIV1;
-  RCC_ClkInitStruct.APB1CLKDivider = RCC_HCLK_DIV2;
-  RCC_ClkInitStruct.APB2CLKDivider = RCC_HCLK_DIV1;
-
-  if (HAL_RCC_ClockConfig(&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK)
-  {
-    Error_Handler();
-  }
-}
-
-/**
-  * @brief GPIO Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_GPIO_Init(void)
-{
-  GPIO_InitTypeDef GPIO_InitStruct = {0};
-  /* USER CODE BEGIN MX_GPIO_Init_1 */
-
-  /* USER CODE END MX_GPIO_Init_1 */
-
-  /* GPIO Ports Clock Enable */
-  __HAL_RCC_GPIOC_CLK_ENABLE();
-  __HAL_RCC_GPIOH_CLK_ENABLE();
-  __HAL_RCC_GPIOA_CLK_ENABLE();
-  __HAL_RCC_GPIOB_CLK_ENABLE();
-
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD2_GPIO_Port, LD2_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : B1_Pin */
-  GPIO_InitStruct.Pin = B1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(B1_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pins : USART_TX_Pin USART_RX_Pin */
-  GPIO_InitStruct.Pin = USART_TX_Pin|USART_RX_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
-  GPIO_InitStruct.Alternate = GPIO_AF7_USART2;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : LD2_Pin */
-  GPIO_InitStruct.Pin = LD2_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD2_GPIO_Port, &GPIO_InitStruct);
-
-  /* USER CODE BEGIN MX_GPIO_Init_2 */
-
-  /* USER CODE END MX_GPIO_Init_2 */
-}
-
-/* USER CODE BEGIN 4 */
-
-/* USER CODE END 4 */
-
-/**
-  * @brief  This function is executed in case of error occurrence.
-  * @retval None
-  */
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */

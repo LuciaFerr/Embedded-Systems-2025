@@ -15,17 +15,15 @@ typedef enum {
 
 typedef uint8_t task_prio_t; // 0 = higher priority
 
-typedef struct {
-	/* The stack pointer (sp) has to be the first element as it is located
-	   at the same address as the structure itself (which makes it possible
-	   to locate it safely from assembly implementation of PendSV_Handler).
-	   The compiler might add padding between other structure elements. */
-	volatile uint32_t sp;
-	void (*handler)(void);
-	volatile os_task_status_t status;
-	volatile uint32_t delay_ticks;
-	volatile task_prio_t priority;
-} os_task_t;
+
+struct os_task {
+    volatile uint32_t sp;
+    void (*handler)(void);
+    volatile os_task_status_t status;
+    volatile uint32_t delay_ticks;
+    volatile task_prio_t priority;
+};
+
 
 static struct {
 	os_task_t tasks[OS_CONFIG_MAX_TASKS];
@@ -40,6 +38,8 @@ volatile uint32_t tick_debug = 0;
 
 #define MAX_PRIORITY 256
 static int last_rr_index[MAX_PRIORITY];
+
+os_task_t *idle_task_ptr = NULL;
 
 
 
@@ -97,12 +97,13 @@ static void prepare_initial_stack(os_stack_t *p_stack, uint32_t stack_size, void
 
 }
 
-bool os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_size, task_prio_t prio)
+os_task_t *os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_size, task_prio_t prio)
 {
     if (m_task_table.size >= OS_CONFIG_MAX_TASKS - 1)
-        return false;
+        return NULL;
 
     os_task_t *p_task = &m_task_table.tasks[m_task_table.size];
+
     p_task->handler = handler;
     p_task->status = OS_TASK_STATUS_READY;
     p_task->delay_ticks = 0;
@@ -114,7 +115,7 @@ bool os_task_init(void (*handler)(void), os_stack_t *p_stack, uint32_t stack_siz
 
     m_task_table.size++;
 
-    return true;
+    return p_task;
 }
 
 void os_start(uint32_t systick_ticks)
@@ -270,7 +271,9 @@ void os_schedule(void) //PRIORITY WITHOUT FAIRNESS
         }
     }
 
-    os_next_task = os_curr_task;
+    //os_next_task = os_curr_task;
+    os_next_task = idle_task_ptr;
+    os_curr_task = idle_task_ptr;
 }
 
 void os_delay(uint32_t ticks)

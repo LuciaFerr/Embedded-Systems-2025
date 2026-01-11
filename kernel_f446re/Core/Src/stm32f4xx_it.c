@@ -163,18 +163,6 @@ __attribute__((naked, used)) void SVC_Handler(void)
 
 
 
-//void SVC_Handler(void)
-//{
-  /* USER CODE BEGIN SVCall_IRQn 0 */
-
-  /* USER CODE END SVCall_IRQn 0 */
-  /* USER CODE BEGIN SVCall_IRQn 1 */
-
-  /* USER CODE END SVCall_IRQn 1 */
-//}
-
-
-
 /**
   * @brief This function handles Debug monitor.
   */

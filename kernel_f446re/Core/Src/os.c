@@ -185,58 +185,6 @@ void os_start_systick(void)
 }
 
 
-/*
-void os_schedule(void) //round-robin no priority
-{
-    int start = m_task_table.current_task;
-
-    for (int i = 1; i <= m_task_table.size; i++)
-    {
-        int idx = (start + i) % m_task_table.size;
-
-        if (m_task_table.tasks[idx].status == OS_TASK_STATUS_READY)
-        {
-            m_task_table.current_task = idx;
-            os_next_task = &m_task_table.tasks[idx];
-            os_curr_task = os_next_task;
-            return;
-        }
-    }
-
-    // se ninguém estiver READY, continua na mesma
-    os_next_task = os_curr_task;
-}
-/*
-
-
-
-/*
-void os_schedule(void) //PRIORITY WITHOUT FAIRNESS
-{
-    os_task_t *best = NULL;
-
-    for (int i = 0; i < m_task_table.size; i++)
-    {
-        os_task_t *t = &m_task_table.tasks[i];
-
-        if (t->status != OS_TASK_STATUS_READY)
-            continue;
-
-        if (!best || t->priority < best->priority)
-            best = t;
-    }
-
-    if (best){
-        os_next_task = best;
-    	os_curr_task = os_next_task;
-    }else
-        os_next_task = os_curr_task; // fallback
-}
-*/
-
-
-
-
  void os_schedule(void) //PRIORITY WITH FAIRNESS
 {
     os_task_t *best = NULL;

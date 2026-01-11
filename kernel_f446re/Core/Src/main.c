@@ -122,6 +122,7 @@ void task5(void)
 
 */
 
+
 ////////////// LEDS TEST OUTPUTS D13, D12 //////////////////////
 void task1(void) {
     while (1) {
@@ -133,7 +134,7 @@ void task1(void) {
             	                  LED1_OFF();
             	        }
 
-        os_delay(50);
+      os_delay(50);
     }
 }
 
@@ -150,7 +151,10 @@ void task2(void) {
     }
 }
 
+
+
 /*
+
 void task3(void) {
     while (1) {
     		trace3++;
@@ -189,6 +193,7 @@ int main(void)
 
   os_init();
 
+
   //LED TEST TASKS
 
   os_task_init(task1, task1_stack, STACK_SIZE, 0);
@@ -196,7 +201,8 @@ int main(void)
   //os_task_init(task3, task3_stack, STACK_SIZE, 0);
 
 
-  /*
+/*
+
   // STACK TEST
   os_task_init(task1, task1_stack, STACK_SIZE, 0);
   os_task_init(task2, task2_stack, STACK_SIZE, 1);
